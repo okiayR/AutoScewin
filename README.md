@@ -12,5 +12,5 @@ You can build the executable yourself using "build_exe.bat" or download the exec
 - If you're on ASUS, you'll need to enable "Publish HII Resources" & disable "Password Protection of Runtime Variables" for SCEWIN to run.
 
 ### Motherboards Tested
-ASUS Z790 Apex Encore
-ASUS ROG STRIX Z790-E GAMING WIFI II
+- ASUS ROG MAXIMUS Z790 APEX ENCORE
+- ASUS ROG STRIX Z790-E GAMING WIFI II
