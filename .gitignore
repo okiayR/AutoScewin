@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+
+Program/log-file.txt
+Program/nvram.txt
+Program/nvram.txt.bak
+Program/nvram_default.txt
