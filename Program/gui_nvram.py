@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import ctypes
 import subprocess
+import webbrowser
 from pathlib import Path
 
 import read_nvram as nv
@@ -10,7 +11,7 @@ import read_nvram as nv
 class NVRAMGui(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("NVRAM Quick Settings")
+        self.title("AUTOSCEWIN - NVRAM Editor v1.0")
         self.geometry("1100x600")
 
         self._path_var = tk.StringVar(value="nvram.txt")
@@ -55,8 +56,18 @@ class NVRAMGui(tk.Tk):
             lambda event: self._canvas.itemconfigure(self._rows_window, width=event.width),
         )
 
-        status_bar = ttk.Label(self, textvariable=self._status_var, anchor="w")
-        status_bar.pack(fill="x", padx=10, pady=(0, 8))
+        status_frame = ttk.Frame(self)
+        status_frame.pack(fill="x", padx=10, pady=(0, 8))
+
+        author_link = ttk.Label(status_frame, text="@okiayR", foreground="#1f6feb", cursor="hand2")
+        author_link.pack(side="left")
+        author_link.bind(
+            "<Button-1>",
+            lambda _event: webbrowser.open_new_tab("https://github.com/okiayR"),
+        )
+
+        status_bar = ttk.Label(status_frame, textvariable=self._status_var, anchor="w")
+        status_bar.pack(side="left", fill="x", expand=True, padx=(10, 0))
 
     def _browse(self) -> None:
         path = filedialog.askopenfilename(

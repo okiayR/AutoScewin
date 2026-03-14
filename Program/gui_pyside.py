@@ -31,7 +31,7 @@ class NoWheelComboBox(QtWidgets.QComboBox):
 class NVRAMWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("NVRAM Quick Settings")
+        self.setWindowTitle("AUTOSCEWIN - NVRAM Editor v1.0")
         self.resize(1100, 600)
 
         self._path_edit = QtWidgets.QLineEdit("nvram.txt")
@@ -92,6 +92,12 @@ class NVRAMWindow(QtWidgets.QMainWindow):
         layout.addWidget(self._tree, stretch=1)
 
         bottom = QtWidgets.QHBoxLayout()
+        author_link = QtWidgets.QLabel('<a href="https://github.com/okiayR">@okiayR</a>')
+        author_link.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        author_link.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextBrowserInteraction)
+        author_link.setOpenExternalLinks(True)
+        author_link.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        bottom.addWidget(author_link)
         bottom.addWidget(self._status_label, stretch=1)
         bottom.addWidget(self._reset_all_button)
         bottom.addWidget(self._save_button)
