@@ -1,7 +1,15 @@
 __pycache__/
 *.pyc
+*.pyo
+build/
+dist/
+AutoScewin-error.log
+log-file.txt
+nvram.txt
+nvram.txt.bak
 
 Program/log-file.txt
 Program/nvram.txt
 Program/nvram.txt.bak
 Program/nvram_default.txt
+Program/AutoScewin-error.log

@@ -40,7 +40,7 @@ class NVRAMWindow(QtWidgets.QMainWindow):
         self._preset_combo = QtWidgets.QComboBox()
         self._preset_combo.addItem("None")
         self._preset_combo.addItem("Low Latency, No Power Saving")
-        self._status_label = QtWidgets.QLabel("Ready")
+        self._status_label = QtWidgets.QLabel()
         self._save_button = QtWidgets.QPushButton("Save")
         self._save_button.setEnabled(False)
         self._reset_all_button = QtWidgets.QPushButton("Reset All")
@@ -98,6 +98,7 @@ class NVRAMWindow(QtWidgets.QMainWindow):
         author_link.setOpenExternalLinks(True)
         author_link.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
         bottom.addWidget(author_link)
+        bottom.addWidget(QtWidgets.QLabel("Status:"))
         bottom.addWidget(self._status_label, stretch=1)
         bottom.addWidget(self._reset_all_button)
         bottom.addWidget(self._save_button)
@@ -208,30 +209,34 @@ class NVRAMWindow(QtWidgets.QMainWindow):
         return self._show_scewin_result(scewin_runner.run_import(nvram_path))
 
     def _run_import(self) -> None:
+        self._set_status("Running import...", process_events=True)
         if not self.run_import():
+            self._set_status("Import failed.")
             return
+        self._set_status("Import completed. Reloading settings...", process_events=True)
         self._load_data()
 
     def _load_data(self, *, show_missing_error: bool = True) -> None:
         path = Path(self._path_edit.text())
+        self._set_status(f"Loading {path.name}...", process_events=True)
         if not path.exists():
             self._tree.clear()
             self._configure_tree_header()
             self._save_button.setEnabled(False)
             self._reset_all_button.setEnabled(False)
-            self._set_status(f"File not found: {path}")
+            self._set_status(f"Waiting for NVRAM export. Missing file: {path.name}")
             if show_missing_error:
                 QtWidgets.QMessageBox.critical(self, "File not found", f"Cannot find: {path}")
             else:
                 self._set_status(
-                    "No nvram.txt yet. Run Export NVRAM or choose export on startup to create one."
+                    "Waiting for NVRAM export. No nvram.txt found yet."
                 )
             return
 
         try:
             settings = nv.parse_nvram_file(path)
         except Exception as exc:
-            self._set_status(f"Failed to parse: {exc}")
+            self._set_status(f"Load failed: {exc}")
             QtWidgets.QMessageBox.critical(self, "Parse error", str(exc))
             return
 
@@ -484,8 +489,12 @@ class NVRAMWindow(QtWidgets.QMainWindow):
 
         self._mark_dirty()
 
-    def _set_status(self, text: str) -> None:
+    def _set_status(self, text: str, *, process_events: bool = False) -> None:
         self._status_label.setText(text)
+        if process_events:
+            app = QtWidgets.QApplication.instance()
+            if app is not None:
+                app.processEvents()
 
     def _format_value(self, token: str, value: str) -> str:
         if self._value_formats.get(token) == "angle":
@@ -759,13 +768,16 @@ class NVRAMWindow(QtWidgets.QMainWindow):
         dialog_layout.addWidget(buttons)
 
         if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            self._set_status("Save canceled.")
             return
 
+        self._set_status("Saving changes...", process_events=True)
         try:
             backup_path = path.with_suffix(path.suffix + ".bak")
             backup_path.write_text(self._original_text, encoding="utf-8")
             nv.update_nvram_file(path, updates)
         except Exception as exc:
+            self._set_status("Save failed.")
             QtWidgets.QMessageBox.critical(self, "Save error", str(exc))
             return
 

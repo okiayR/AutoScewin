@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import base64
 import ctypes
 import subprocess
 from dataclasses import dataclass
@@ -85,38 +84,22 @@ def _read_text_if_present(path: Path) -> str | None:
     return path.read_text(encoding="utf-8", errors="replace").strip()
 
 
-def _encode_powershell(script: str) -> str:
-    return base64.b64encode(script.encode("utf-16le")).decode("ascii")
-
-
-def _write_elevated_script(command: list[str], working_dir: Path, log_path: Path) -> Path:
-    scewin_path, mode_flag, save_flag, nvram_arg = command
-    script_path = working_dir / "run_scewin_elevated.cmd"
-    script_text = "\r\n".join(
-        [
-            "@echo off",
-            f'cd /d "{working_dir}"',
-            f'"{scewin_path}" {mode_flag} {save_flag} "{nvram_arg}" > "{log_path}" 2>&1',
-            "exit /b %errorlevel%",
-            "",
-        ]
+def _run_elevated(mode: str, nvram_path: Path, log_path: Path) -> tuple[int, str]:
+    launcher_path, launcher_args = app_runtime.launcher_command(
+        ["--elevated-scewin", mode, str(nvram_path), str(log_path)]
     )
-    script_path.write_text(script_text, encoding="utf-8")
-    return script_path
-
-
-def _run_elevated(command: list[str], working_dir: Path, log_path: Path) -> tuple[int, str]:
-    script_path = _write_elevated_script(command, working_dir, log_path)
+    arg_list = ", ".join(_ps_quote(arg) for arg in launcher_args)
     elevated_script = (
-        "$p = Start-Process -FilePath 'cmd.exe' "
-        f"-ArgumentList '/c \"\"{script_path}\"\"' "
-        f"-WorkingDirectory {_ps_quote(str(working_dir))} "
+        f"$argList = @({arg_list}); "
+        "$p = Start-Process "
+        f"-FilePath {_ps_quote(str(launcher_path))} "
+        "-ArgumentList $argList "
+        f"-WorkingDirectory {_ps_quote(str(app_runtime.app_root()))} "
         "-Verb RunAs -Wait -PassThru; "
         "exit $p.ExitCode"
     )
-    encoded_script = _encode_powershell(elevated_script)
     result = subprocess.run(
-        ["powershell", "-NoProfile", "-EncodedCommand", encoded_script],
+        ["powershell", "-NoProfile", "-Command", elevated_script],
         check=False,
         shell=False,
         capture_output=True,
@@ -130,6 +113,21 @@ def _run_elevated(command: list[str], working_dir: Path, log_path: Path) -> tupl
     return result.returncode, "\n".join(part for part in output_parts if part)
 
 
+def run_elevated_helper(mode: str, nvram_path: Path, log_path: Path) -> int:
+    action_name = "Export" if mode == "export" else "Import"
+    runtime_error = _validate_runtime_files(action_name)
+    if runtime_error is not None:
+        return 1
+
+    workspace: Path | None = None
+    try:
+        workspace = app_runtime.create_runtime_workspace()
+        command = _build_command(mode, nvram_path.resolve(), workspace)
+        return _run_direct(command, workspace, log_path.resolve())
+    finally:
+        app_runtime.cleanup_runtime_workspace(workspace)
+
+
 def _run(mode: str, nvram_path: Path) -> ScewinRunResult:
     action_name = "Export" if mode == "export" else "Import"
     runtime_error = _validate_runtime_files(action_name)
@@ -138,17 +136,20 @@ def _run(mode: str, nvram_path: Path) -> ScewinRunResult:
 
     nvram_path = nvram_path.resolve()
     log_path = app_runtime.default_log_path()
-    working_dir = app_runtime.ensure_runtime_tools()
-    command = _build_command(mode, nvram_path, working_dir)
     if log_path.exists():
         log_path.unlink()
 
     try:
         if _is_admin():
-            code = _run_direct(command, working_dir, log_path)
+            workspace = app_runtime.create_runtime_workspace()
+            try:
+                command = _build_command(mode, nvram_path, workspace)
+                code = _run_direct(command, workspace, log_path)
+            finally:
+                app_runtime.cleanup_runtime_workspace(workspace)
             launcher_output = ""
         else:
-            code, launcher_output = _run_elevated(command, working_dir, log_path)
+            code, launcher_output = _run_elevated(mode, nvram_path, log_path)
     except Exception as exc:
         return ScewinRunResult(
             ok=False,

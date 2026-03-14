@@ -77,31 +77,56 @@ def _print_environment_help(pyside_error: BaseException, tk_error: BaseException
 
 def _write_error_log(primary_error: BaseException, fallback_error: BaseException | None) -> None:
     log_path = app_runtime.app_root() / "AutoScewin-error.log"
-    lines = [
-        "AutoScewin startup failure",
-        "",
-        "Primary GUI failure:",
-        "".join(traceback.format_exception(type(primary_error), primary_error, primary_error.__traceback__)),
-    ]
+    lines = ["AutoScewin startup failure", "", "Primary GUI failure:"]
+    if app_runtime.is_frozen():
+        lines.append(f"{type(primary_error).__name__}: {primary_error}")
+    else:
+        lines.append(
+            "".join(
+                traceback.format_exception(
+                    type(primary_error),
+                    primary_error,
+                    primary_error.__traceback__,
+                )
+            )
+        )
     if fallback_error is not None:
-        lines.extend(
-            [
-                "",
-                "Fallback GUI failure:",
+        lines.extend(["", "Fallback GUI failure:"])
+        if app_runtime.is_frozen():
+            lines.append(f"{type(fallback_error).__name__}: {fallback_error}")
+        else:
+            lines.append(
                 "".join(
                     traceback.format_exception(
                         type(fallback_error),
                         fallback_error,
                         fallback_error.__traceback__,
                     )
-                ),
-            ]
-        )
+                )
+            )
     log_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _maybe_run_elevated_helper(argv: list[str]) -> int | None:
+    if len(argv) != 5 or argv[1] != "--elevated-scewin":
+        return None
+    mode = argv[2]
+    if mode not in {"export", "import"}:
+        return 2
+
+    import scewin_runner
+
+    nvram_path = Path(argv[3])
+    log_path = Path(argv[4])
+    return scewin_runner.run_elevated_helper(mode, nvram_path, log_path)
 
 
 def main() -> int:
     os.chdir(app_runtime.app_root())
+
+    helper_code = _maybe_run_elevated_helper(sys.argv)
+    if helper_code is not None:
+        return helper_code
 
     pyside_error: Exception | None = None
     try:

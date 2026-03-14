@@ -1,11 +1,14 @@
+from __future__ import annotations
+
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
-import ctypes
-import subprocess
 import webbrowser
 from pathlib import Path
 
+import app_runtime
 import read_nvram as nv
+import scewin_runner
 
 
 class NVRAMGui(tk.Tk):
@@ -66,6 +69,7 @@ class NVRAMGui(tk.Tk):
             lambda _event: webbrowser.open_new_tab("https://github.com/okiayR"),
         )
 
+        ttk.Label(status_frame, text="Status:").pack(side="left", padx=(10, 0))
         status_bar = ttk.Label(status_frame, textvariable=self._status_var, anchor="w")
         status_bar.pack(side="left", fill="x", expand=True, padx=(10, 0))
 
@@ -79,83 +83,53 @@ class NVRAMGui(tk.Tk):
             self._load_data()
 
     @staticmethod
-    def _run_batch_file(batch_path: Path, action_name: str) -> bool:
-        if not batch_path.exists():
-            messagebox.showerror(f"{action_name} failed", f"{batch_path.name} not found in this folder.")
-            return False
-
-        if ctypes.windll.shell32.IsUserAnAdmin():
-            try:
-                result = subprocess.run(
-                    [str(batch_path), "--no-pause"],
-                    check=False,
-                    shell=True,
-                )
-            except Exception as exc:
-                messagebox.showerror(f"{action_name} failed", str(exc))
-                return False
-            if result.returncode != 0:
-                messagebox.showerror(
-                    f"{action_name} failed",
-                    f"{batch_path.name} exited with code {result.returncode}.",
-                )
-                return False
+    def _show_scewin_result(result: scewin_runner.ScewinRunResult) -> bool:
+        if result.ok:
             return True
 
-        quoted_batch = str(batch_path.resolve()).replace("'", "''")
-        ps_command = (
-            "$p = Start-Process -FilePath 'cmd.exe' "
-            f"-ArgumentList '/c \"\"{quoted_batch}\"\" --no-pause' "
-            "-Verb RunAs -Wait -PassThru; "
-            "exit $p.ExitCode"
-        )
-        try:
-            result = subprocess.run(
-                ["powershell", "-NoProfile", "-Command", ps_command],
-                check=False,
-                shell=False,
-            )
-        except Exception as exc:
-            messagebox.showerror(f"{action_name} failed", str(exc))
-            return False
-
-        if result.returncode != 0:
-            messagebox.showerror(
-                f"{action_name} failed",
-                f"{batch_path.name} exited with code {result.returncode}.",
-            )
-            return False
-        return True
+        details = result.error or f"{result.action_name} exited with code {result.code}."
+        if result.log_path is not None:
+            details = f"{details}\n\nSee log for details:\n{result.log_path}"
+        messagebox.showerror(f"{result.action_name} failed", details)
+        return False
 
     def _run_export(self) -> None:
-        if not self._run_batch_file(Path("Export.bat"), "Export"):
+        self._set_status("Running export...", refresh=True)
+        if not self._show_scewin_result(scewin_runner.run_export()):
+            self._set_status("Export failed.")
             return
+        self._set_status("Export completed. Reloading settings...", refresh=True)
         self._load_data(show_missing_error=False)
 
     def _run_import(self) -> None:
-        if not self._run_batch_file(Path("Import.bat"), "Import"):
+        nvram_path = Path(self._path_var.get())
+        self._set_status("Running import...", refresh=True)
+        if not self._show_scewin_result(scewin_runner.run_import(nvram_path)):
+            self._set_status("Import failed.")
             return
+        self._set_status("Import completed. Reloading settings...", refresh=True)
         self._load_data(show_missing_error=False)
 
     def _load_data(self, show_missing_error: bool = True) -> None:
         path = Path(self._path_var.get())
+        self._set_status(f"Loading {path.name}...", refresh=True)
         if not path.exists():
             for child in self._rows_frame.winfo_children():
                 child.destroy()
             self._row_vars.clear()
-            self._set_status(f"File not found: {path}")
+            self._set_status(f"Waiting for NVRAM export. Missing file: {path.name}")
             if show_missing_error:
                 messagebox.showerror("File not found", f"Cannot find: {path}")
             else:
                 self._set_status(
-                    "No nvram.txt yet. Run Export NVRAM to create one for this machine."
+                    "Waiting for NVRAM export. No nvram.txt found yet."
                 )
             return
 
         try:
             settings = nv.parse_nvram_file(path)
         except Exception as exc:
-            self._set_status(f"Failed to parse: {exc}")
+            self._set_status(f"Load failed: {exc}")
             messagebox.showerror("Parse error", str(exc))
             return
 
@@ -285,11 +259,14 @@ class NVRAMGui(tk.Tk):
 
         self._set_status(f"Loaded {len(settings)} settings | {len(nv.QUICK_LOOKUPS)} quick items")
 
-    def _set_status(self, text: str) -> None:
+    def _set_status(self, text: str, *, refresh: bool = False) -> None:
         self._status_var.set(text)
+        if refresh:
+            self.update_idletasks()
 
 
 def main() -> None:
+    os.chdir(app_runtime.app_root())
     app = NVRAMGui()
     app.mainloop()
 
