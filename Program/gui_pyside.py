@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import sys
-import subprocess
-import ctypes
 from pathlib import Path
 
 from PySide6 import QtCore, QtWidgets
 
+import app_runtime
 import read_nvram as nv
+import scewin_runner
 
 
 TOKEN_COL_WIDTH = 90
@@ -119,8 +119,7 @@ class NVRAMWindow(QtWidgets.QMainWindow):
 
     def _load_presets(self) -> None:
         self._presets.clear()
-        presets_dir = Path("Presets")
-        preset_file = presets_dir / "Low Latency, No Powersaving.txt"
+        preset_file = app_runtime.preset_path("Low Latency, No Powersaving.txt")
         if not preset_file.exists():
             return
         name = "Low Latency, No Power Saving"
@@ -184,65 +183,23 @@ class NVRAMWindow(QtWidgets.QMainWindow):
         return reply == QtWidgets.QMessageBox.StandardButton.Yes
 
     @staticmethod
-    def _run_batch_file(batch_path: Path, action_name: str) -> bool:
-        if not batch_path.exists():
-            QtWidgets.QMessageBox.critical(
-                None, f"{batch_path.name} missing", f"{batch_path.name} not found in this folder."
-            )
-            return False
-
-        if ctypes.windll.shell32.IsUserAnAdmin():
-            try:
-                result = subprocess.run(
-                    [str(batch_path), "--no-pause"],
-                    check=False,
-                    shell=True,
-                )
-            except Exception as exc:
-                QtWidgets.QMessageBox.critical(None, f"{action_name} failed", str(exc))
-                return False
-            if result.returncode != 0:
-                QtWidgets.QMessageBox.critical(
-                    None, f"{action_name} failed", f"{batch_path.name} exited with code {result.returncode}."
-                )
-                return False
+    def _show_scewin_result(result: scewin_runner.ScewinRunResult) -> bool:
+        if result.ok:
             return True
 
-        quoted_batch = str(batch_path.resolve()).replace("'", "''")
-        ps_command = (
-            "$p = Start-Process -FilePath 'cmd.exe' "
-            f"-ArgumentList '/c \"\"{quoted_batch}\"\" --no-pause' "
-            "-Verb RunAs -Wait -PassThru; "
-            "exit $p.ExitCode"
-        )
-        try:
-            result = subprocess.run(
-                ["powershell", "-NoProfile", "-Command", ps_command],
-                check=False,
-                shell=False,
-            )
-        except Exception as exc:
-            QtWidgets.QMessageBox.critical(None, f"{action_name} failed", str(exc))
-            return False
-
-        if result.returncode != 0:
-            QtWidgets.QMessageBox.critical(
-                None,
-                f"{action_name} failed",
-                f"{batch_path.name} exited with code {result.returncode}.",
-            )
-            return False
-        return True
+        details = result.error or f"{result.action_name} exited with code {result.code}."
+        if result.log_path is not None:
+            details = f"{details}\n\nSee log for details:\n{result.log_path}"
+        QtWidgets.QMessageBox.critical(None, f"{result.action_name} failed", details)
+        return False
 
     @staticmethod
     def run_export() -> bool:
-        export_path = Path("Export.bat")
-        return NVRAMWindow._run_batch_file(export_path, "Export")
+        return NVRAMWindow._show_scewin_result(scewin_runner.run_export())
 
-    @staticmethod
-    def run_import() -> bool:
-        import_path = Path("Import.bat")
-        return NVRAMWindow._run_batch_file(import_path, "Import")
+    def run_import(self) -> bool:
+        nvram_path = Path(self._path_edit.text())
+        return self._show_scewin_result(scewin_runner.run_import(nvram_path))
 
     def _run_import(self) -> None:
         if not self.run_import():
@@ -261,7 +218,7 @@ class NVRAMWindow(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.critical(self, "File not found", f"Cannot find: {path}")
             else:
                 self._set_status(
-                    "No nvram.txt yet. Run Export.bat or choose export on startup to create one."
+                    "No nvram.txt yet. Run Export NVRAM or choose export on startup to create one."
                 )
             return
 
@@ -548,8 +505,68 @@ class NVRAMWindow(QtWidgets.QMainWindow):
         name = self._preset_combo.itemText(index)
         self._apply_preset(name)
 
+    @staticmethod
+    def _set_combo_to_text(editor: QtWidgets.QComboBox, desired: str) -> bool:
+        alternatives = [p.strip() for p in desired.split(" or ")]
+        if not alternatives:
+            return False
+        for alt in alternatives:
+            alt_lower = alt.strip().lower()
+            alt_norm = "".join(ch for ch in alt_lower if ch.isalnum())
+            for i in range(editor.count()):
+                option = editor.itemText(i).strip().lower()
+                option_norm = "".join(ch for ch in option if ch.isalnum())
+                if option == alt_lower or option_norm == alt_norm:
+                    editor.setCurrentIndex(i)
+                    return True
+        return False
+
+    def _restore_loaded_values(self) -> int:
+        restored = 0
+        root = self._tree.invisibleRootItem()
+        stack = [root]
+        while stack:
+            item = stack.pop()
+            for i in range(item.childCount()):
+                stack.append(item.child(i))
+
+            data = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+            if not isinstance(data, dict) or "setting" not in data:
+                continue
+
+            setting = data["setting"]
+            original = self._original_values.get(setting.token, {})
+            editor = self._tree.itemWidget(item, 2)
+
+            if isinstance(editor, QtWidgets.QComboBox):
+                desired = original.get("option_label")
+                if desired is None:
+                    desired = original.get("value")
+                if desired is None:
+                    continue
+                if self._set_combo_to_text(editor, desired):
+                    self._store_current_text(item, editor.currentText())
+                    restored += 1
+                continue
+
+            if isinstance(editor, QtWidgets.QLineEdit):
+                desired = original.get("value")
+                if desired is None:
+                    continue
+                editor.setText(desired)
+                self._store_current_text(item, desired)
+                restored += 1
+
+        self._refresh_dirty_state()
+        return restored
+
     def _apply_preset(self, name: str) -> None:
         if name == "None":
+            restored = self._restore_loaded_values()
+            if restored == 0:
+                self._set_status("Preset cleared. No loaded values needed restoring.")
+            else:
+                self._set_status("Preset cleared. Restored loaded values.")
             return
         preset = self._presets.get(name)
         if not preset:
@@ -596,25 +613,15 @@ class NVRAMWindow(QtWidgets.QMainWindow):
         if applied == 0:
             self._set_status(f"Preset '{name}' made no changes.")
             return
-        self._mark_dirty()
+        self._refresh_dirty_state()
 
     def _apply_preset_to_item(self, item: QtWidgets.QTreeWidgetItem, desired: str) -> bool:
         editor = self._tree.itemWidget(item, 2)
         if isinstance(editor, QtWidgets.QComboBox):
-            alternatives = [p.strip() for p in desired.split(" or ")]
-            if not alternatives:
+            if not self._set_combo_to_text(editor, desired):
                 return False
-            for alt in alternatives:
-                alt_lower = alt.strip().lower()
-                alt_norm = "".join(ch for ch in alt_lower if ch.isalnum())
-                for i in range(editor.count()):
-                    option = editor.itemText(i).strip().lower()
-                    option_norm = "".join(ch for ch in option if ch.isalnum())
-                    if option == alt_lower or option_norm == alt_norm:
-                        editor.setCurrentIndex(i)
-                        self._store_current_text(item, editor.currentText())
-                        return True
-            return False
+            self._store_current_text(item, editor.currentText())
+            return True
         if isinstance(editor, QtWidgets.QLineEdit):
             clean = self._clean_value_text(desired)
             editor.setText(clean)
@@ -622,10 +629,46 @@ class NVRAMWindow(QtWidgets.QMainWindow):
             return True
         return False
 
+    def _has_unsaved_changes(self) -> bool:
+        root = self._tree.invisibleRootItem()
+        stack = [root]
+        while stack:
+            item = stack.pop()
+            for i in range(item.childCount()):
+                stack.append(item.child(i))
+
+            data = item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+            if not isinstance(data, dict) or "setting" not in data:
+                continue
+
+            setting = data["setting"]
+            original = self._original_values.get(setting.token, {})
+            editor = self._tree.itemWidget(item, 2)
+
+            if isinstance(editor, QtWidgets.QComboBox):
+                current = editor.currentText()
+                baseline = original.get("option_label")
+                if baseline is None:
+                    baseline = original.get("value")
+                if baseline != current:
+                    return True
+                continue
+
+            if isinstance(editor, QtWidgets.QLineEdit):
+                if original.get("value") != editor.text():
+                    return True
+
+        return False
+
+    def _refresh_dirty_state(self) -> None:
+        self._dirty = self._has_unsaved_changes()
+        self._save_button.setEnabled(self._dirty)
+        self._reset_all_button.setEnabled(self._tree.topLevelItemCount() > 0)
+
     def _mark_dirty(self) -> None:
         self._dirty = True
         self._save_button.setEnabled(True)
-        self._reset_all_button.setEnabled(True)
+        self._reset_all_button.setEnabled(self._tree.topLevelItemCount() > 0)
 
     def _save_to_file(self) -> None:
         path = Path(self._path_edit.text())
@@ -784,7 +827,7 @@ def main() -> None:
     reply = QtWidgets.QMessageBox.question(
         None,
         "Run Export",
-        "Run Export.bat before opening the editor?",
+        "Run Export NVRAM before opening the editor?",
         QtWidgets.QMessageBox.StandardButton.Yes
         | QtWidgets.QMessageBox.StandardButton.No,
     )

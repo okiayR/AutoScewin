@@ -4,7 +4,10 @@ import os
 import runpy
 import subprocess
 import sys
+import traceback
 from pathlib import Path
+
+import app_runtime
 
 sys.dont_write_bytecode = True
 
@@ -72,8 +75,33 @@ def _print_environment_help(pyside_error: BaseException, tk_error: BaseException
     print("  2. Or keep using the bundled Python fallback shipped under Supporting/.")
 
 
+def _write_error_log(primary_error: BaseException, fallback_error: BaseException | None) -> None:
+    log_path = app_runtime.app_root() / "AutoScewin-error.log"
+    lines = [
+        "AutoScewin startup failure",
+        "",
+        "Primary GUI failure:",
+        "".join(traceback.format_exception(type(primary_error), primary_error, primary_error.__traceback__)),
+    ]
+    if fallback_error is not None:
+        lines.extend(
+            [
+                "",
+                "Fallback GUI failure:",
+                "".join(
+                    traceback.format_exception(
+                        type(fallback_error),
+                        fallback_error,
+                        fallback_error.__traceback__,
+                    )
+                ),
+            ]
+        )
+    log_path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def main() -> int:
-    os.chdir(PROGRAM_DIR)
+    os.chdir(app_runtime.app_root())
 
     pyside_error: Exception | None = None
     try:
@@ -81,9 +109,15 @@ def main() -> int:
     except Exception as exc:
         pyside_error = exc
 
+    if app_runtime.is_frozen():
+        _write_error_log(pyside_error, None)
+        _print_environment_help(pyside_error, None)
+        return 1
+
     try:
         return _run_tk_with_bundled_python()
     except Exception as exc:
+        _write_error_log(pyside_error, exc)
         _print_environment_help(pyside_error, exc)
         return 1
 

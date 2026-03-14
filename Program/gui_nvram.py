@@ -1,5 +1,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+import ctypes
+import subprocess
 from pathlib import Path
 
 import read_nvram as nv
@@ -16,7 +18,7 @@ class NVRAMGui(tk.Tk):
         self._row_vars = []
 
         self._build_ui()
-        self._load_data()
+        self._load_data(show_missing_error=False)
 
     def _build_ui(self) -> None:
         top = ttk.Frame(self)
@@ -28,6 +30,8 @@ class NVRAMGui(tk.Tk):
 
         ttk.Button(top, text="Browse", command=self._browse).pack(side="left")
         ttk.Button(top, text="Load", command=self._load_data).pack(side="left", padx=(6, 0))
+        ttk.Button(top, text="Export NVRAM", command=self._run_export).pack(side="left", padx=(6, 0))
+        ttk.Button(top, text="Import NVRAM", command=self._run_import).pack(side="left", padx=(6, 0))
 
         list_frame = ttk.Frame(self)
         list_frame.pack(fill="both", expand=True, padx=10, pady=(0, 8))
@@ -63,11 +67,78 @@ class NVRAMGui(tk.Tk):
             self._path_var.set(path)
             self._load_data()
 
-    def _load_data(self) -> None:
+    @staticmethod
+    def _run_batch_file(batch_path: Path, action_name: str) -> bool:
+        if not batch_path.exists():
+            messagebox.showerror(f"{action_name} failed", f"{batch_path.name} not found in this folder.")
+            return False
+
+        if ctypes.windll.shell32.IsUserAnAdmin():
+            try:
+                result = subprocess.run(
+                    [str(batch_path), "--no-pause"],
+                    check=False,
+                    shell=True,
+                )
+            except Exception as exc:
+                messagebox.showerror(f"{action_name} failed", str(exc))
+                return False
+            if result.returncode != 0:
+                messagebox.showerror(
+                    f"{action_name} failed",
+                    f"{batch_path.name} exited with code {result.returncode}.",
+                )
+                return False
+            return True
+
+        quoted_batch = str(batch_path.resolve()).replace("'", "''")
+        ps_command = (
+            "$p = Start-Process -FilePath 'cmd.exe' "
+            f"-ArgumentList '/c \"\"{quoted_batch}\"\" --no-pause' "
+            "-Verb RunAs -Wait -PassThru; "
+            "exit $p.ExitCode"
+        )
+        try:
+            result = subprocess.run(
+                ["powershell", "-NoProfile", "-Command", ps_command],
+                check=False,
+                shell=False,
+            )
+        except Exception as exc:
+            messagebox.showerror(f"{action_name} failed", str(exc))
+            return False
+
+        if result.returncode != 0:
+            messagebox.showerror(
+                f"{action_name} failed",
+                f"{batch_path.name} exited with code {result.returncode}.",
+            )
+            return False
+        return True
+
+    def _run_export(self) -> None:
+        if not self._run_batch_file(Path("Export.bat"), "Export"):
+            return
+        self._load_data(show_missing_error=False)
+
+    def _run_import(self) -> None:
+        if not self._run_batch_file(Path("Import.bat"), "Import"):
+            return
+        self._load_data(show_missing_error=False)
+
+    def _load_data(self, show_missing_error: bool = True) -> None:
         path = Path(self._path_var.get())
         if not path.exists():
+            for child in self._rows_frame.winfo_children():
+                child.destroy()
+            self._row_vars.clear()
             self._set_status(f"File not found: {path}")
-            messagebox.showerror("File not found", f"Cannot find: {path}")
+            if show_missing_error:
+                messagebox.showerror("File not found", f"Cannot find: {path}")
+            else:
+                self._set_status(
+                    "No nvram.txt yet. Run Export NVRAM to create one for this machine."
+                )
             return
 
         try:

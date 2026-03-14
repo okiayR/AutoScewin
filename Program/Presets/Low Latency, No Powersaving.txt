@@ -1,0 +1,148 @@
+Low Latency No Power Saving Preset:
+
+ACPI Sleep State: Suspend Disabled
+ACPI Standby State: Disabled
+ACS: Disabled
+ADR Enable: Disabled
+Advanced Error Reporting: Disabled
+AES: Disabled
+AP Threads Idle Manner: RUN Loop
+ARTG Object: Disabled
+ASPM: Disabled
+ASPM Support: Disabled
+BCLK Aware Adaptive Voltage: Disabled
+Bi-directional PROCHOT#: Disabled
+Bluetooth Controller: Enabled
+BME DMA Mitigation: Disabled
+Boot Performance Mode: Turbo Performance
+BT Core: Enabled
+C-State Auto Demotion: Disabled
+C-State Pre-Wake: Disabled
+C-State Un-demotion: Disabled
+C6DRAM: Disabled
+CER: Disabled
+Clock Gating: Disabled
+CPU C-States: Disabled
+CPU CrashLog: Disabled
+CrashLog Feature: Disabled
+DDR PowerDown and Idle Counter: PCODE
+DeepSx Wake on WLAN and BT Enable: Disabled
+Disable DSX ACPRESENT PullDown: Enabled
+Disable Fast Package C-State Ramp: TRUE
+Disable PROCHOT# Output: Enabled
+Discrete Thunderbolt(TM) Support: Disabled
+DMI ASPM: Disabled
+DMI Gen3 ASPM: Disabled
+DMI Link ASPM Control: Disabled
+DPC: Disabled
+EC Low Power Mode: Disabled
+ECC Support: Disabled
+EDPC: Disabled
+EIST: Disabled
+Enable Hibernation: 0
+Energy Efficient P-State: Disabled
+Energy Efficient Turbo: Disabled
+Enhanced C-States: Disabled
+Enhanced Interleave: Enabled
+EPG DIMM Idd3N: 0
+EPG DIMM Idd3P: 0
+Execute Disable Bit: Disabled
+Extended Tag: Enabled
+Fast Boot: Disabled
+FER: Disabled
+GNA Device: Disabled
+HDC Control: Disabled
+HDCP Support: Disabled
+Hot-Plug Support: Disabled
+Hyper-Threading: Disabled
+iGPU Multi-Monitor: Disabled
+Intel (VMX) Virtualization Technology: Disabled
+Intel Rapid Recovery Technology: Disabled
+Intel RMT State: Disabled
+Intel Trusted Execution Technology: Disabled
+Intel(R) Speed Shift Technology: Disabled
+Intel(R) Speed Shift Technology Interrupt Control: Disabled
+Interrupt Redirection Mode Selection: Round robin
+IPU Device: Disabled
+IPv4 PXE Support: Disabled
+IPv6 PXE Support: Disabled
+JTAG C10 Power Gate: Disabled
+L1 Low: Disabled
+L1 Substates: Disabled
+LAN Wake From DeepSx: Disabled
+Legacy IO Low Latency: Enabled
+LPM: Disabled
+LTR: Disabled
+Maximum Payload: 4096 Bytes
+Maximum Read Request: 4096 Bytes
+ME State: Enabled
+Memory Scrambler: Disabled
+MonitorMWait: Disabled
+MRC Fast Boot: Disabled
+Network Stack Driver Support: Disabled
+NFER: Disabled
+Optane: Disabled
+OS Idle Mode: Disabled
+Package C-State Limit: C0/C1
+Package C-State Demotion: Disabled
+Package C-State Un-demotion: Disabled
+PAVP Enable: Disabled
+PCH Cross Throttling: Disabled
+PCI Delay Optimization: Enabled
+PCI Express Native Power Management: Disabled
+PCIE PLL SSC: 0.0%
+PCIE Tunneling over USB4: Disabled
+PECI: Disabled
+PEG - ASPM: Disabled
+PEP: Disabled or No Constraint
+Perform Platform Erase Operations: Disabled
+PERR# Generation: Disabled
+PET Progress: Disabled
+PMAX Object: Disabled
+PME SCI: Disabled
+Power Down Mode: No Power Down
+Power Gating: Disabled
+PPCC Object: Disabled
+PS2 Devices Support: Disabled
+PS3 Enable: Disabled
+PS4 Enable: Disabled
+PS_ON Enable: Disabled
+PTID Support: 0
+PTM: Disabled
+PTT: Enable
+RC6(Render Standby): Disabled
+Ring Down Bin: Disabled
+Row Hammer Mode: Disabled
+Row Hammer Prevention: Disabled
+S0ix Auto Demotion: Disabled
+SA GV: Disabled
+Security Device Support: Disabled
+SelfRefresh Enable: Enabled
+SelfRefresh IdleTimer: 65535
+SERR# Generation: Disabled
+SHA256 PCR Bank: Enabled
+SPD Write Disable: TRUE
+SpeedStep: Disabled
+Spread Spectrum: Disabled or 0.5%
+SR-IOV Support: Disabled
+TCM State: Disabled
+Thermal Throttling Level: Manual
+Three Strike Counter: Disabled
+Throttler CKEMIN Defeature: Disabled
+Total Memory Encryption: Disabled
+TPM State: Disabled
+TVB Ratio Clipping: Disabled
+TVB Voltage Optimizations: Disabled
+URR: Disabled
+USB Audio Offload: Enabled
+USB Power Delivery in Soft Off State: Disabled
+VGA Palette Snoop: Disabled
+VT-d: Disabled
+VTD: Disabled
+Wake on LAN Enable: Disabled
+Wake on WLAN and BT Enable: Disabled
+WatchDog: Disabled
+WDT Enable: Disabled
+Wi-Fi Controller: Disabled
+Wi-Fi Core: Disabled
+WWAN Device: Disabled
