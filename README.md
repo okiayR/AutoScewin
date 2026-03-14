@@ -9,7 +9,7 @@ You can build the executable yourself using "build_exe.bat" or download the exec
 
 ### Important Notes
 - I've only tested this program on LGA1700. There's no guarantee for this to work on every motherboard.
-- If you're on ASUS, you need enable "Publish HII Resources" & disable "Password Protection of Runtime Variables".
+- If you're on ASUS, you'll need to enable "Publish HII Resources" & disable "Password Protection of Runtime Variables" for SCEWIN to run.
 
 ### Motherboards Tested
 ASUS Z790 Apex Encore
