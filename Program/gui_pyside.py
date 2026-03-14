@@ -31,7 +31,7 @@ class NoWheelComboBox(QtWidgets.QComboBox):
 class NVRAMWindow(QtWidgets.QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("AUTOSCEWIN - NVRAM Editor v1.0")
+        self.setWindowTitle("AUTOSCEWIN - NVRAM Editor v1.0.0")
         self.resize(1100, 600)
 
         self._path_edit = QtWidgets.QLineEdit("nvram.txt")

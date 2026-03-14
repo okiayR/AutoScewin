@@ -11,7 +11,7 @@ import read_nvram as nv
 class NVRAMGui(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("AUTOSCEWIN - NVRAM Editor v1.0")
+        self.title("AUTOSCEWIN - NVRAM Editor v1.0.0")
         self.geometry("1100x600")
 
         self._path_var = tk.StringVar(value="nvram.txt")
