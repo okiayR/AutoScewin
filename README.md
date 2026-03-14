@@ -1,35 +1,16 @@
+# AUTOSCEWIN
 GUI for changing bios settings using SCEWIN.
 
-Main launcher:
-run_gui.bat
+## Disclaimer
+This program mainly serves as a GUI and was built around [ab3lkaizen's "SCEHUB"](https://github.com/ab3lkaizen/SCEHUB). It is also not supported or validated by [American Megatrends (AMI)](https://www.ami.com). Changing certain settings in the program can result in reduced performance or even system instability. If you're system becomes unstable, attempt to clear your CMOS or reflash your bios.
 
-Python launcher:
-python run_gui.py
+### How to Run
+You can build the executable yourself using "build_exe.bat" or download the executable from the releases.
 
-PySide6 setup:
-pip install PySide6
+### Important Notes
+- I've only tested this program on LGA1700. There's no guarantee for this to work on every motherboard.
+- If you're on ASUS, you need enable "Publish HII Resources" & disable "Password Protection of Runtime Variables".
 
-If PySide6 is unavailable, `run_gui.py` falls back to the bundled Python Tk GUI
-shipped in `Supporting/pyhwinfo-master/pyhwinfo-master/python`.
-
-First-time use:
-Run `Export.bat` or choose the export prompt on startup to create `nvram.txt`
-for your own machine before editing settings.
-
-Single EXE build:
-Install `PySide6` and `pyinstaller`, then run:
-
-`pyinstaller --clean --noconfirm autoscewin.spec`
-
-or:
-
-`build_exe.bat`
-
-The finished one-file Windows build will be created as:
-
-`dist/AutoScewin.exe`
-
-That EXE bundles the Python app, `SCEWIN_64.exe`, and the required `.sys`
-driver files. At runtime it extracts the bundled BIOS tool to a temporary
-folder, runs it elevated, and keeps `nvram.txt` plus `log-file.txt` next to
-the EXE.
+#### Motherboards Tested
+ASUS Z790 Apex Encore
+ASUS ROG STRIX Z790-E GAMING WIFI II
