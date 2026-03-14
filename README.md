@@ -7,10 +7,11 @@ This program mainly serves as a GUI and was built around [ab3lkaizen's "SCEHUB"]
 ### How to Run
 You can build the executable yourself using "build_exe.bat" or download the executable from the releases.
 
-### Important Notes
-- I've only tested this program on LGA1700. There's no guarantee for this to work on every motherboard.
-- If you're on ASUS, you'll need to enable "Publish HII Resources" & disable "Password Protection of Runtime Variables" for SCEWIN to run.
-
 ### Motherboards Tested
 - ASUS ROG MAXIMUS Z790 APEX ENCORE
 - ASUS ROG STRIX Z790-E GAMING WIFI II
+
+### Important Notes
+- I've only tested this program on LGA1700. There's no guarantee for this to work on every motherboard.
+- If you're on ASUS, you'll need to enable "Publish HII Resources" & disable "Password Protection of Runtime Variables" for SCEWIN to run.
+- You can try the preset that's on there but it was mostly tailored to what I'm running, so some features like virtualization will be disabled. There's a text document in the repository detailing what most of the settings do.
